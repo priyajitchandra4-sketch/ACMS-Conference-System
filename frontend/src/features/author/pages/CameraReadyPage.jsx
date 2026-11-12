@@ -1,0 +1,15 @@
+import React, { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { decisionsApi } from '../../../api/decisions';
+import { ActionButton, ErrorMessage, Loading, PageTitle, Panel, StatusPill } from '../../shared/PhaseUi';
+
+export default function CameraReadyPage() {
+  const { id: paperId } = useParams(); const qc = useQueryClient(); const [file, setFile] = useState(null); const [statement, setStatement] = useState(false);
+  const query = useQuery({ queryKey: ['camera-ready', paperId], queryFn: () => decisionsApi.getCameraReady(paperId) });
+  const mutation = useMutation({ mutationFn: () => { const form = new FormData(); form.append('file', file); form.append('copyright_confirmed', String(statement)); return decisionsApi.submitCameraReady(paperId, form); }, onSuccess: data => { qc.setQueryData(['camera-ready', paperId], data); setFile(null); } });
+  if (query.isLoading) return <Loading label="Loading camera-ready status…" />;
+  if (query.isError) return <div className="p-6"><ErrorMessage error={query.error} /></div>;
+  const current = query.data || {}; const locked = ['submitted','approved'].includes(current.status);
+  return <div className="p-6 max-w-3xl mx-auto text-white space-y-5"><Link to={`/author/papers/${paperId}/decision`} className="text-sm text-[#ff8b6e] hover:underline">← Decision and rebuttal</Link><PageTitle eyebrow="Phase 7 · Author" title="Camera-ready submission" subtitle={current.paper_title || `Paper ${paperId}`} /><Panel><div className="flex justify-between items-center"><h2 className="font-semibold">Current file</h2><StatusPill value={current.status || 'not uploaded'} /></div>{current.filename && <p className="text-sm text-gray-300 mt-3">{current.filename} · uploaded {current.uploaded_at ? new Date(current.uploaded_at).toLocaleString() : ''}</p>}<p className="text-xs text-gray-500 mt-2">Upload the final manuscript file requested by the conference. The API will enforce file type, size, and deadline rules.</p></Panel>{!locked && <Panel><label className="block text-sm font-medium">Final manuscript<input type="file" accept=".pdf,.doc,.docx" onChange={e => setFile(e.target.files?.[0] || null)} className="block mt-2 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#ff5c35] file:px-3 file:py-2 file:text-white" /></label><label className="mt-4 flex items-start gap-2 text-sm text-gray-300"><input type="checkbox" checked={statement} onChange={e => setStatement(e.target.checked)} className="mt-1 accent-[#ff5c35]" />I confirm this is the final version and comply with the conference formatting and copyright requirements.</label>{mutation.isError && <p className="text-red-300 mt-3 text-sm">{mutation.error?.response?.data?.detail || 'Upload failed.'}</p>}<div className="mt-4"><ActionButton busy={mutation.isPending} disabled={!file || !statement} onClick={() => mutation.mutate()}>Upload final version</ActionButton></div></Panel>}</div>;
+}

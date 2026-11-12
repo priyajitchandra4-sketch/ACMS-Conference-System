@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-color: #f4f1ea;
+  --card-bg: #ffffff;
+  --text-main: #0f0e13;
+  --text-muted: #4a4552;
+  --border-color: #e5e2db;
+  --accent-color: #ff5c35;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.02em;
+}
+
+/* Framed Outer Window Container */
+#root {
+  max-width: 1280px;
+  margin: 28px auto;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 36px;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
+  min-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1300px) {
+  #root {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    min-height: 100vh;
+  }
+}

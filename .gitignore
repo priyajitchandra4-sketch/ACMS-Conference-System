@@ -1,0 +1,37 @@
+.venv/
+node_modules/
+.env
+uploads/
+__pycache__/
+.pytest_cache/
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local dependencies and generated output
+**/node_modules/
+**/.venv/
+**/venv/
+**/__pycache__/
+**/dist/
+**/build/
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Local uploads, databases, and logs
+**/uploads/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# macOS
+.DS_Store
+
+# Virtual environments, including timestamped backups
+**/.venv*/
+**/venv*/
