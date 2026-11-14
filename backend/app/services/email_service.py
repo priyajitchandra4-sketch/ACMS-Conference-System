@@ -1,11 +1,14 @@
+import html
+import json
 import logging
-import smtplib
-import ssl
-from email.message import EmailMessage
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 ROLE_LABELS = {
     "track_chair": "Track Chair",
@@ -22,7 +25,13 @@ def send_invitation_email(
     conference_title: str | None = None,
     track_name: str | None = None,
     valid_days: int | None = None,
-) -> None:
+):
+    api_key = settings.brevo_api_key
+    if not api_key:
+        logger.error("Invitation email not sent: BREVO_API_KEY is not configured")
+        return
+
+    sender_email = settings.smtp_from_email
     role_label = ROLE_LABELS.get(role, role.replace("_", " ").title())
 
     lines = [
@@ -32,49 +41,49 @@ def send_invitation_email(
         lines.append(f"Conference: {conference_title}")
     if track_name:
         lines.append(f"Track: {track_name}")
+
     lines.extend(["", "Open the link below to accept or decline the invitation:", invite_link])
+
     if valid_days:
         lines.extend(["", f"This link is valid for {valid_days} days."])
 
-    msg = EmailMessage()
-    msg.set_content("\n".join(lines))
-    msg["Subject"] = f"ACMS invitation: {role_label}"
-    msg["From"] = settings.smtp_from_email
-    msg["To"] = to_email
+    subject = f"ACMS invitation: {role_label}"
+    escaped_lines = "<br>".join(html.escape(line) for line in lines)
+    safe_link = html.escape(invite_link, quote=True)
+    html_content = (
+        f"<p>{escaped_lines}</p>"
+        f'<p><a href="{safe_link}">Open invitation</a></p>'
+    )
 
-    if settings.smtp_starttls and settings.smtp_use_ssl:
-        raise ValueError("Set only one of SMTP_STARTTLS or SMTP_USE_SSL.")
+    message = {
+        "sender": {
+            "name": "ACMS Conference System",
+            "email": sender_email,
+        },
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": "\n".join(lines),
+        "htmlContent": html_content,
+    }
 
-    username = settings.smtp_username
-    password = settings.smtp_password
-    if bool(username) != bool(password):
-        raise ValueError("Both SMTP_USERNAME and SMTP_PASSWORD must be set together.")
+    request = Request(
+        BREVO_SEND_URL,
+        data=json.dumps(message).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
 
     try:
-        context = ssl.create_default_context()
-
-        if settings.smtp_use_ssl:
-            with smtplib.SMTP_SSL(
-                settings.smtp_host,
-                settings.smtp_port,
-                timeout=15,
-                context=context,
-            ) as server:
-                if username and password:
-                    server.login(username, password)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(
-                settings.smtp_host,
-                settings.smtp_port,
-                timeout=15,
-            ) as server:
-                server.ehlo()
-                if settings.smtp_starttls:
-                    server.starttls(context=context)
-                    server.ehlo()
-                if username and password:
-                    server.login(username, password)
-                server.send_message(msg)
-    except Exception:
-        logger.exception("Failed to send invitation email to %s", to_email)
+        with urlopen(request, timeout=20) as response:
+            response.read()
+            logger.info("Brevo accepted invitation email for %s", to_email)
+    except HTTPError as exc:
+        # Log the response, but never log the API key.
+        details = exc.read().decode("utf-8", errors="replace")
+        logger.error("Brevo rejected invitation email (HTTP %s): %s", exc.code, details)
+    except (URLError, TimeoutError, OSError):
+        logger.exception("Could not connect to Brevo API to send invitation email")

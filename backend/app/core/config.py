@@ -7,14 +7,10 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     frontend_url: str = "http://localhost:5173"
 
-    # Local development defaults (for example, MailHog).
-    # Set production SMTP values in Railway Variables.
-    smtp_host: str = "localhost"
-    smtp_port: int = 1025
-    smtp_username: str | None = None
-    smtp_password: str | None = None
-    smtp_starttls: bool = False
-    smtp_use_ssl: bool = False
+    # Brevo HTTPS API. Set BREVO_API_KEY in Railway Variables.
+    brevo_api_key: str | None = None
+
+    # Must be a sender address verified in Brevo.
     smtp_from_email: str = "noreply@acms.org"
 
     invite_valid_days: int = 7
